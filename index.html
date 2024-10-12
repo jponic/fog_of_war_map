@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Highlight GPX Path with File Upload</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.5.0/gpx.min.js"></script>
+</head>
+<body>
+    <h3>Upload a GPX file to see the path highlighted on the map</h3>
+    <input type="file" id="gpxFile" accept=".gpx" />
+    <div id="map" style="width: 100%; height: 600px;"></div>
+    <script>
+        var hexagons = [];
+        var plzen = [49.7624708, 13.3682078];
+        var brno = [49.195278, 16.608333];
+
+
+        // Function to calculate the bounding box
+        function getBoundingBox(coordinates) {
+            var minLon = 180, minLat = 90, maxLon = -180, maxLat = -90;
+            for (let i = 0; i < coordinates.length; i++) {
+                minLat = Math.min(minLat, coordinates[i][0]);
+                maxLat = Math.max(maxLat, coordinates[i][0]);
+                minLon = Math.min(minLon, coordinates[i][1]);
+                maxLon = Math.max(maxLon, coordinates[i][1]);
+            }
+            return [minLat, maxLat, minLon, maxLon];
+        }
+
+        // Initialize the map centered at a default location
+        var map = L.map('map').setView(plzen, 13);
+        var east =18.826857;
+        var north = 51.019543;
+        var west= 12.168079;
+        var south = 48.616063;
+
+        var czechia = [[north,west],[north, east],[south, east],[south, west]];
+       // L.polygon(czechia, { fillColor: 'black', fillOpacity: 0.5, interactive: false, stroke: false }).addTo(map);
+
+
+        // Add OpenStreetMap tile layer
+        var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 });
+        tileLayer.addTo(map);
+
+        // Handle GPX file upload
+        document.getElementById('gpxFile').addEventListener('change', function (event) {
+            var file = event.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    var gpxData = e.target.result;
+
+                    // Clear existing layers (except tile layer) on the map
+                    map.eachLayer(function (layer) {
+                        if (layer !== tileLayer) map.removeLayer(layer);
+                    });
+
+                    // Load and parse the GPX data using the Leaflet GPX library
+                    var gpxLayer = new L.GPX(gpxData, { async: true })
+                        .on('loaded', function (e) {
+                            map.fitBounds(e.target.getBounds());
+
+                            // Extract all points to create a buffer zone
+                            var latlngs = [];
+                            gpxLayer.eachLayer(function (layer) {
+                                if (layer instanceof L.Polyline) latlngs = latlngs.concat(layer.getLatLngs());
+                            });
+
+                            // Create buffer polygons with a 100 meter radius
+                            var bufferLayers = latlngs.map(function (latlng) {
+                                return L.circle(latlng, { radius: 100, color: 'blue', fillOpacity: 0.2 }).addTo(map);
+                            });
+
+                            // Get combined bounding box of buffer areas
+                            var combinedBuffer = L.featureGroup(bufferLayers).getBounds();
+
+                            // Example: Create a large black mask rectangle
+                            var overlayPolygon = [
+                                [90, -180], [90, 180], [-90, 180], [-90, -180]  // Entire world
+                            ];
+
+                            var coords = [[49.762569, 13.368452], [49.762447, 13.368680], [49.762392, 13.368976], [49.762353, 13.369248], [49.762149, 13.369303], [49.761989, 13.369480], [49.761916, 13.369740], [49.761882, 13.370041], [49.761869, 13.370321], [49.761816, 13.370595], [49.761684, 13.370803], [49.761498, 13.370703], [49.761296, 13.370576], [49.761130, 13.370458], [49.760954, 13.370364], [49.760795, 13.370225], [49.760621, 13.370078], [49.760438, 13.369860], [49.760295, 13.369629], [49.760130, 13.369519], [49.759961, 13.369704], [49.759778, 13.369947], [49.759645, 13.370145], [49.759490, 13.370328], [49.759338, 13.370513], [49.759161, 13.370697], [49.758982, 13.370896], [49.758822, 13.371150], [49.758642, 13.371370], [49.758529, 13.371596], [49.758386, 13.371765], [49.758250, 13.371957], [49.758116, 13.372158], [49.757973, 13.372343], [49.757787, 13.372563], [49.757649, 13.372775], [49.757509, 13.372971], [49.757411, 13.373229], [49.757226, 13.373406], [49.757081, 13.373589], [49.756937, 13.373776], [49.756774, 13.373973], [49.756620, 13.374194], [49.756503, 13.374454], [49.756376, 13.374685], [49.756230, 13.374901], [49.756090, 13.375086], [49.755939, 13.375240], [49.755782, 13.375401], [49.755638, 13.375585], [49.755425, 13.375719], [49.755268, 13.375853], [49.755143, 13.376058], [49.755021, 13.376323], [49.754869, 13.376529], [49.754673, 13.376615], [49.754484, 13.376581], [49.754281, 13.376446], [49.754139, 13.376222], [49.753930, 13.376135], [49.753726, 13.376092], [49.753522, 13.376050], [49.753322, 13.375991], [49.753147, 13.375934], [49.752943, 13.375865], [49.752741, 13.375795], [49.752559, 13.375724], [49.752397, 13.375585], [49.752202, 13.375519], [49.752017, 13.375405], [49.751835, 13.375314], [49.751659, 13.375240], [49.751478, 13.375203], [49.751278, 13.375167], [49.751064, 13.375110], [49.750850, 13.375054], [49.750647, 13.374999], [49.750457, 13.374945], [49.750265, 13.374894], [49.750078, 13.374842], [49.749895, 13.374794], [49.749693, 13.374827], [49.749512, 13.374835], [49.749328, 13.374720], [49.749144, 13.374658], [49.748919, 13.374627], [49.748737, 13.374566], [49.748579, 13.374331], [49.748568, 13.374014], [49.748548, 13.373706], [49.748543, 13.373368], [49.748533, 13.373027], [49.748593, 13.372747], [49.748611, 13.372440], [49.748584, 13.372161], [49.748589, 13.371878], [49.748626, 13.371595], [49.748659, 13.371292], [49.748696, 13.370989], [49.748690, 13.370706], [49.748687, 13.370415], [49.748712, 13.370086], [49.748765, 13.369793], [49.748626, 13.369602], [49.748447, 13.369581], [49.748264, 13.369578], [49.748060, 13.369549], [49.747869, 13.369563], [49.747688, 13.369537], [49.747505, 13.369554], [49.747307, 13.369494], [49.747097, 13.369433], [49.746902, 13.369401], [49.746717, 13.369396], [49.746530, 13.369393], [49.746354, 13.369315], [49.746161, 13.369288], [49.745976, 13.369224], [49.745797, 13.369178], [49.745605, 13.369180], [49.745423, 13.369256], [49.745235, 13.369298], [49.745028, 13.369270], [49.744847, 13.369248], [49.744665, 13.369252], [49.744470, 13.369243], [49.744274, 13.369235], [49.744098, 13.369162], [49.743914, 13.369125], [49.743660, 13.369114], [49.743473, 13.369083], [49.743294, 13.369064], [49.743112, 13.369081], [49.742911, 13.369042], [49.742727, 13.369012], [49.742522, 13.369008], [49.742329, 13.368981], [49.742137, 13.368940], [49.741923, 13.368883], [49.741724, 13.368861], [49.741515, 13.368851], [49.741333, 13.368828], [49.741144, 13.368743], [49.740964, 13.368759], [49.740756, 13.368709], [49.740558, 13.368674], [49.740556, 13.368381], [49.740605, 13.368095], [49.740609, 13.367805], [49.740671, 13.367518], [49.740736, 13.367222], [49.740565, 13.367132], [49.740379, 13.367110], [49.740183, 13.367041], [49.740001, 13.367023], [49.739816, 13.367027], [49.739652, 13.366901], [49.739465, 13.366881], [49.739278, 13.366862], [49.739120, 13.366710], [49.738962, 13.366554], [49.738769, 13.366593], [49.738583, 13.366601], [49.738437, 13.366413], [49.738232, 13.366378], [49.738049, 13.366359], [49.737861, 13.366370], [49.737666, 13.366288], [49.737474, 13.366203], [49.737284, 13.366197], [49.737093, 13.366186], [49.736888, 13.366178], [49.736712, 13.366095], [49.736538, 13.366022], [49.736345, 13.365997], [49.736148, 13.365938], [49.735942, 13.365883], [49.735736, 13.365863], [49.735542, 13.365861], [49.735341, 13.365827], [49.735144, 13.365769], [49.734966, 13.365717], [49.734758, 13.365643], [49.734568, 13.365602], [49.734475, 13.365340], [49.734383, 13.365102], [49.734205, 13.365017], [49.734008, 13.365048], [49.733855, 13.364845], [49.733734, 13.364561], [49.733630, 13.364282], [49.733499, 13.364007], [49.733359, 13.363692], [49.733271, 13.363441], [49.733171, 13.363192], [49.733066, 13.362932], [49.732948, 13.362674], [49.732750, 13.362586], [49.732572, 13.362446], [49.732379, 13.362321], [49.732184, 13.362207], [49.731979, 13.362132], [49.731799, 13.362051], [49.731618, 13.362000], [49.731411, 13.361888], [49.731220, 13.361828], [49.731035, 13.361737], [49.730888, 13.361562], [49.730693, 13.361527], [49.730498, 13.361486], [49.730302, 13.361471], [49.730091, 13.361383], [49.730081, 13.361053], [49.730111, 13.360743], [49.730074, 13.360440], [49.730062, 13.360135], [49.730060, 13.359787], [49.730051, 13.359493], [49.730046, 13.359198], [49.730039, 13.358871], [49.730039, 13.358565], [49.729819, 13.358577], [49.729615, 13.358490], [49.729448, 13.358368], [49.729308, 13.358173], [49.729209, 13.357933], [49.729148, 13.357632], [49.729127, 13.357287], [49.729164, 13.357001], [49.729244, 13.356718], [49.729359, 13.356497], [49.729508, 13.356317], [49.729690, 13.356202], [49.729797, 13.355975], [49.729821, 13.355652], [49.729858, 13.355374], [49.729889, 13.355096], [49.729935, 13.354796], [49.729979, 13.354471], [49.730017, 13.354155], [49.730026, 13.353868], [49.730077, 13.353585], [49.730074, 13.353233], [49.730076, 13.352906], [49.729868, 13.352871], [49.729671, 13.352880], [49.729488, 13.352900], [49.729288, 13.352911], [49.729069, 13.352901], [49.728857, 13.352887], [49.728667, 13.352861], [49.728472, 13.352844], [49.728242, 13.352830], [49.728053, 13.352818], [49.727837, 13.352808], [49.727613, 13.352786], [49.727428, 13.352759], [49.727233, 13.352704], [49.727080, 13.352522], [49.727075, 13.352201], [49.727051, 13.351882], [49.727025, 13.351594], [49.727208, 13.351546], [49.727032, 13.351618], [49.727028, 13.351897]];
+
+
+                            // Create a smaller red testing polygon using bounding box coordinates
+                            var bbCoords = getBoundingBox(coords);  //south, north,west,east
+                            var testingPolygon = [
+                                [bbCoords[0], bbCoords[2]], [bbCoords[1], bbCoords[2]],
+                                [bbCoords[1], bbCoords[3]], [bbCoords[0], bbCoords[3]]
+                            ];
+                            var polygonNorth = [
+                                [90, bbCoords[2]], [bbCoords[1], bbCoords[2]], [bbCoords[1], bbCoords[3]], [90, bbCoords[3]]
+                            ];
+                            var polygonWest = [
+                                [90, -180], [90,bbCoords[2]],
+                                [-90,bbCoords[2]], [-90, -180]
+                            ];
+                            var polygonEast = [
+                                [90, bbCoords[3]], [-90, bbCoords[3]],[-90,180] , [90, 180]
+                            ];
+                            var polygonSouth = [
+                                //[coords[0], coords[2]], [-90, coords[2]], [-90, coords[3], [coords[0], coords[3]]]
+                                [-90, bbCoords[2]], [bbCoords[0], bbCoords[2]], [bbCoords[0], bbCoords[3]], [-90, bbCoords[3]]
+                            ];
+                            
+
+                            // Add mask and testing polygon
+                            //L.polygon(overlayPolygon, { color: 'black', fillColor: 'black', fillOpacity: 0.7, interactive: false }).addTo(map);
+                            //L.polygon(testingPolygon, { color: 'red', fillColor: 'yellow', fillOpacity: 0.3, interactive: false }).addTo(map);
+                            var opacity = 0.95;
+
+                            L.polygon(polygonNorth, { fillColor: 'black', fillOpacity: opacity, interactive: false, stroke: false }).addTo(map);
+                            L.polygon(polygonWest, { fillColor: 'black', fillOpacity: opacity, interactive: false, stroke: false }).addTo(map);
+                            L.polygon(polygonEast, { fillColor: 'black', fillOpacity: opacity, interactive: false, stroke: false }).addTo(map);
+                            L.polygon(polygonSouth, { fillColor: 'black', fillOpacity: opacity, interactive: false, stroke: false }).addTo(map);
+
+                            // Fit the map to the combined buffer area
+                            map.fitBounds(combinedBuffer);
+                        }).addTo(map);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        map.on('click', function (e) {
+            // Get the latitude and longitude of the click event
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng; // Corrected typo from `lgn` to `lng`
+
+            var coordsToDelete = L.latLng(lat,lng);
+            deleteHexagons(coordsToDelete);
+
+
+
+            // Define an initial polygon using L.polygon (not just an array)
+           /* var initialPolygon = [
+                [90, -180],
+                [90, 180],
+                [-90, 180],
+                [-90, -180],
+                [-90, -180]
+            ];
+
+            // If the polygon has not been initialized, create it first
+            if (typeof polygonObject === 'undefined') {
+                polygonObject = L.polygon(initialPolygon, {
+                    fillColor: 'black',
+                    fillOpacity: 0.2,
+                    interactive: false,
+                    stroke: false,
+                    fillRule: 'evenodd'
+                }).addTo(map);
+            }
+
+            // Retrieve the current vertices of the Leaflet polygon object
+            var currentVertices = polygonObject.getLatLngs()[0];
+
+            // Add the new vertex (clicked location) to the polygon
+            currentVertices.push([lat-0.01, lng-0.01]);
+            currentVertices.push([lat+0.01, lng-0.01]);
+            currentVertices.push([lat+0.01, lng+0.01]);
+            currentVertices.push([lat-0.01, lng+0.01]);
+            currentVertices.push([lat-0.01, lng-0.01]);
+            currentVertices.push([-90, -180]);
+
+            // Update the polygon with the new vertices
+            polygonObject.setLatLngs([currentVertices]);
+
+            // Optional: Add a red circle marker at the clicked location
+            L.circleMarker([lat, lng], {
+                color: 'red',
+                radius: 5
+            }).addTo(map);*/
+        });
+        drawHexagons(plzen, 0.0003, 0.0006);
+
+
+        function deleteHexagons(latLng) {
+            // Iterate through each polygon in the array
+            hexagons = hexagons.filter(function (polygon) {
+                // Check if the polygon contains the given latLng
+                var bounds = polygon.getBounds();
+                if (bounds.contains(latLng)) {
+                    // If the polygon contains the latLng, remove it from the map
+                    map.removeLayer(polygon);
+                    return false; // Remove from the polygons array
+                }
+                return true; // Keep it in the polygons array
+            });
+        }
+        var userMarker = null;  // To store the user's marker
+
+        // Function to update the user's location on the map
+        function updateUserLocation(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+            var accuracy = position.coords.accuracy;  // Accuracy in meters
+
+            // Set the map view to the user's location if it's the first time
+            map.setView([lat, lon], 13);
+
+            // If the marker exists, update its position, otherwise create a new marker
+            if (userMarker) {
+                userMarker.setLatLng([lat, lon]);
+            } else {
+                userMarker = L.marker([lat, lon]).addTo(map)
+                    .bindPopup(`You are here (accuracy: ${accuracy} meters)`).openPopup();
+            }
+        }
+
+        // Error handling if geolocation fails
+        function handleLocationError(error) {
+            alert("Unable to retrieve your location: " + error.message);
+        }
+
+        // Options to enable high-accuracy mode
+        var geoOptions = {
+            enableHighAccuracy: true,  // Request high accuracy (e.g., GPS)
+            timeout: 10000,  // Timeout after 10 seconds
+            maximumAge: 0  // Do not use cached location
+        };
+
+        // Use watchPosition to get updates on the user's location
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateUserLocation, handleLocationError, geoOptions);
+        } else {
+            alert("Geolocation is not supported by your browser.");
+        }
+
+        function drawHexagons(center, stepX, stepY){
+            var row =0;
+            var color = 'red';
+            var deltaX = (stepX/4)  /Math.cos(Math.PI/6);
+            var deltaY = (stepY/4) / Math.sin(Math.PI/6);
+            for (i = center[0] -20*stepX; i< center[0] +20*stepX;i += stepX){
+                var shift = 0;
+                for(ii = center[1] -20*stepY; ii< center[1] +20*stepY;ii += stepY){
+                    if(row %2 === 0) {
+                        color = 'blue'
+                        shift = stepY/2;
+                    } else {
+                        color = 'red'
+                        shift = 0;
+                    }
+
+                    const hexagon = [
+                        [i + +stepX -deltaX,shift + ii ],
+                        [i + deltaX,shift + ii + deltaY],
+                        [i - deltaX,shift + ii + deltaY],
+                        [i -stepX +deltaX,shift + ii ],
+                        [i - deltaX,shift + ii -deltaY],
+                        [i + deltaX, shift + ii - deltaY]
+                    ];
+                    hexagons.push(L.polygon(hexagon, { fillColor: color, fillOpacity: 0.9, interactive: false}));
+
+
+
+
+
+
+
+                    /*L.circleMarker([i, ii+ shift], {
+                        color: color,
+                        radius: 5
+                    }).addTo(map);*/
+
+                }
+                row ++;
+
+
+            }
+            for (i = 0; i<hexagons.length; i++){
+                hexagons[i].addTo(map);
+            }
+        }
+
+
+    </script>
+
+</body>
+</html>
